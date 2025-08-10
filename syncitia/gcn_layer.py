@@ -2,7 +2,7 @@ import torch
 import torch_geometric.utils
 from torch_geometric.nn import GCNConv
 
-class HigherOrderGCNLayer(torch.nn.Module):
+class HigherOrderGCNLayer(torch.nn.Module): 
     def __init__(self, in_channels, out_channels, max_order=2):
         super(HigherOrderGCNLayer, self).__init__()
         self.conv = GCNConv(in_channels, out_channels)
