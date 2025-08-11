@@ -86,3 +86,64 @@ def prepare_full_data(G, all_dists):
             full_labels[i] = 1
     full_data.y = torch.tensor(full_labels, dtype=torch.long)
     return full_data
+
+def create_coordinate_prediction_data(coordinates, G, missing_fraction=0.25):
+    """Create coordinate prediction task by hiding spatial clusters"""
+    from sklearn.cluster import KMeans
+    import numpy as np
+    
+    n_nodes = len(coordinates)
+    
+    # Create spatial clusters to hide
+    n_clusters = max(3, int(n_nodes * missing_fraction / 50))  # ~50 nodes per cluster
+    kmeans = KMeans(n_clusters=n_clusters, random_state=42)
+    cluster_labels = kmeans.fit_predict(coordinates)
+    
+    # Select some clusters to hide completely
+    unique_clusters = np.unique(cluster_labels)
+    n_hidden_clusters = max(1, len(unique_clusters) // 3)
+    hidden_clusters = np.random.choice(unique_clusters, n_hidden_clusters, replace=False)
+    
+    # Nodes to hide
+    hidden_mask = np.isin(cluster_labels, hidden_clusters)
+    hidden_indices = np.where(hidden_mask)[0]
+    visible_indices = np.where(~hidden_mask)[0]
+    
+    print(f"Hiding {len(hidden_indices)} nodes ({len(hidden_indices)/n_nodes*100:.1f}%) in {n_hidden_clusters} clusters")
+    print(f"Keeping {len(visible_indices)} nodes visible for training")
+    
+    # Prepare data structure
+    data = from_networkx(G)
+    
+    # Node features: [local_betti0, local_betti1, degree, is_visible, x_coord, y_coord]
+    node_features = []
+    for i in range(n_nodes):
+        # Topological features (always available)
+        local_betti0 = G.nodes[i]['local_betti0'] / 10.0  # Normalized
+        local_betti1 = G.nodes[i]['local_betti1'] / 10.0  # Normalized
+        degree = G.nodes[i]['degree'] / 20.0  # Normalized
+        
+        # Visibility flag
+        is_visible = 1.0 if i in visible_indices else 0.0
+        
+        # Coordinates (masked for hidden nodes)
+        if i in visible_indices:
+            x_coord = coordinates[i, 0] / 100.0  # Normalized
+            y_coord = coordinates[i, 1] / 100.0  # Normalized
+        else:
+            x_coord = 0.0  # Hidden
+            y_coord = 0.0  # Hidden
+        
+        node_features.append([local_betti0, local_betti1, degree, is_visible, x_coord, y_coord])
+    
+    # Add to data structure
+    data.x = torch.tensor(node_features, dtype=torch.float32)
+    data.target_coords = torch.tensor(coordinates, dtype=torch.float32)
+    data.visible_mask = torch.zeros(n_nodes, dtype=torch.bool)
+    data.hidden_mask = torch.zeros(n_nodes, dtype=torch.bool)
+    data.visible_mask[visible_indices] = True
+    data.hidden_mask[hidden_indices] = True
+    data.visible_indices = visible_indices
+    data.hidden_indices = hidden_indices
+    
+    return data
