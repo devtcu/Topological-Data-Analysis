@@ -19,7 +19,7 @@ def plot_voronoi(coordinates, output_path='voronoi_diagram.png'):
     plt.xlabel('X (µm)')
     plt.ylabel('Y (µm)')
     plt.legend()
-    plt.savefig(output_path)
+    plt.savefig(output_path) #youll find it in the directory
     plt.close()
 
 def plot_predictions(coordinates, predictions, output_path='gcn_predictions.png'):
