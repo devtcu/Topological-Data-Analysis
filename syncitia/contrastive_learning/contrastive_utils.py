@@ -3,7 +3,7 @@ import numpy as np
 import copy
 from torch_geometric.utils import dropout_edge
 
-def create_graph_views(data, edge_dropout_prob=0.2, feature_mask_prob=0.3):
+def create_graph_views(data, edge_dropout_prob=0.7, feature_mask_prob=0.3):
     """
     Create two augmented views of the graph for contrastive learning
     
